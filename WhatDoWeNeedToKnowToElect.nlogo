@@ -1,3 +1,5 @@
+globals [ selected-ids ]
+
 breed [processes process] ;;Nodes
 directed-link-breed [channels channel] ;;Edges
 
@@ -13,6 +15,10 @@ directed-link-breed [channels channel] ;;Edges
 ;;   receive a msg from one neighbour
 ;;   send a msg to all known neighbours
 
+;; is-leader? values
+;;   follower -> false
+;;   leader   -> true
+
 processes-own [
   contacts-list ;; contains all the channels that the process knows about
   ID            ;; ID is unique
@@ -24,7 +30,136 @@ processes-own [
 channels-own [
   port-to      ;; the process which the channel goes to
   port-from    ;; the process which the channel comes from
+  active?      ;; if the channel is currently in use by a process
 ]
+
+to setup
+  clear-all
+  
+  set selected-ids []
+  ;;create processes
+  ;;  assign them a random position within the window
+  ;;  assign them an ID ( have to keep track of which IDs have been selected )
+  setup-processes
+  display-processes
+  
+  ;;Must create a connected graph
+  ;;  randomly choose to create some edges and maintain a connected graph
+  ;;  create channels list and update processes contact-lists
+  setup-channels
+  create-connected-graph
+  display-channels
+end
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Setup-Functions ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+to setup-processes
+  set-default-shape processes "circle"
+  create-processes population-size
+  ask processes [
+    setxy random-pxcor random-pycor
+    set ID get-new-id
+    set contacts-list []
+    set is-leader? false ;; ie. follower
+    set state "idle"
+    set message-queue []
+  ]
+end
+
+to setup-channels
+  ;; creates population-size * population-size many channels and hides them all
+  no-display
+  ask processes [
+    let me self
+    let remaining-processes [self] of processes with [ me != self ]
+    foreach remaining-processes [
+      create-channel-to ? [
+        set port-from me
+        set port-to ?
+        set active? false
+      ]
+    ]
+  ]
+  ask channels [ hide-link ]
+  display
+end
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Display-Functions ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+to display-processes
+  no-display
+  ask processes [
+    ifelse is-leader? [ set color white ]
+                      [ set color green ]
+  ]
+  display
+end
+
+to display-channels
+  no-display
+  ask channels [
+    hide-link
+    if active? [ show-link ]
+  ]
+  display
+end
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Helper-Functions ;;
+;;;;;;;;;;;;;;;;;;;;;;
+
+to-report get-new-id
+  let random-id random(population-size ^ 3)
+  
+  while [ member? random-id selected-ids ] [
+    set random-id random(population-size ^ 3)
+  ]
+  
+  set selected-ids lput random-id selected-ids
+  
+  report random-id
+end
+
+to create-connected-graph
+  ;; every process has to have at-least one edge connected coming from it
+  ;; this means at least for a graph G (V,E), where V represents the processes
+  ;; and E represents the channels there will be |V| = population-size many processes
+  ;; and |E| = |V| - 1 many channels
+  
+  ;; algorithm
+  ;; remaining-processes -> a list of processes with no contacts
+  ;; while still remaining-processes
+  ;;   select a random process from remaining-processes
+  ;;   let optional-channels every channel with from = current process
+  ;;   select a random channel from optional-channels
+  ;;   if its not active? 
+  ;;     set the channel active
+  ;;     add its port-to to the contact-list of the process
+  ;;   endif
+  ;;   remove it from the remaining-processes
+  ;;end while
+  
+  let remaining-processes [self] of processes
+  
+  while [ not empty? remaining-processes ] [
+    let current-process one-of remaining-processes
+    let current-channel one-of [self] of channels with [ port-from = current-process and active? = false ]
+    
+    ask current-channel [
+      set active? true
+    ]
+    
+    ask current-process [
+      set contacts-list lput [port-to] of current-channel contacts-list
+    ]
+    
+    set remaining-processes remove current-process remaining-processes
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -40,8 +175,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -16
 16
@@ -52,6 +187,49 @@ GRAPHICS-WINDOW
 1
 ticks
 30.0
+
+SLIDER
+21
+10
+193
+43
+population-size
+population-size
+2
+100
+64
+1
+1
+NIL
+HORIZONTAL
+
+BUTTON
+22
+47
+88
+80
+Setup
+setup
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+699
+36
+811
+81
+Active Channels
+count channels with [ active? = true ]
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
