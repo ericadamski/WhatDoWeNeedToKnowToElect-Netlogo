@@ -128,7 +128,7 @@ to create-connected-graph
   ;; every process has to have at-least one edge connected coming from it
   ;; this means at least for a graph G (V,E), where V represents the processes
   ;; and E represents the channels there will be |V| = population-size many processes
-  ;; and |E| = |V| - 1 many channels
+  ;; and |E| = at least |V| - 1 many channels
   
   ;; algorithm
   ;; remaining-processes -> a list of processes with no contacts
@@ -197,7 +197,7 @@ population-size
 population-size
 2
 100
-64
+18
 1
 1
 NIL
