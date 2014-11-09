@@ -21,10 +21,12 @@ directed-link-breed [channels channel] ;;Edges
 
 processes-own [
   contacts-list ;; contains all the channels that the process knows about
+  succ          ;; contains all neighbours that are known at the begining this will stay constant after setup
   ID            ;; ID is unique
   is-leader?    ;; a boolean which gives the leader state of the process
   state         ;; valid for only (modifying, receiving, sending) represented as a string
   message-queue ;; a queue of all received messages to handle one at a time
+  mailbox       ;; a set of pairs of id's to Succ-lists of other processes
 ]
 
 channels-own [
@@ -65,6 +67,8 @@ to setup-processes
     set is-leader? false ;; ie. follower
     set state "idle"
     set message-queue []
+    set mailbox []
+    set succ []
   ]
 end
 
@@ -84,6 +88,18 @@ to setup-channels
   ]
   ask channels [ hide-link ]
   display
+end
+
+;;;;;;;;;;;;;;;;;;;;
+;; Main Functions ;;
+;;;;;;;;;;;;;;;;;;;;
+
+to send-message
+  ;;change state to sending
+end
+
+to receive-message
+  ;;change state to receiveing
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -124,41 +140,64 @@ to-report get-new-id
   report random-id
 end
 
+to-report create-graph [current-graph current-process-as-list]
+  ;; g1 and g2 are lists of processes that have been connected
+  ;; it should hold true that if v is in g1 then v cannot be in g2
+  let randomize ((random-float 1) mod 2)
+  let connecting-channel 0
+  ifelse randomize = 0 [ set connecting-channel get-channel one-of current-graph one-of current-process-as-list ]
+                       [ set connecting-channel get-channel one-of current-process-as-list one-of current-graph ]
+              
+  ask connecting-channel [
+    set active? true
+  ]
+  
+  report lput first current-process-as-list current-graph
+end
+
 to create-connected-graph
   ;; every process has to have at-least one edge connected coming from it
   ;; this means at least for a graph G (V,E), where V represents the processes
-  ;; and E represents the channels there will be |V| = population-size many processes
-  ;; and |E| = at least |V| - 1 many channels
+  ;; and E represents the channels there will initially be |V| = population-size many processes
+  ;; and |E| = |V| - 1 many channels
   
   ;; algorithm
   ;; remaining-processes -> a list of processes with no contacts
+  ;; create a graph by connecting two random processes
   ;; while still remaining-processes
   ;;   select a random process from remaining-processes
-  ;;   let optional-channels every channel with from = current process
-  ;;   select a random channel from optional-channels
-  ;;   if its not active? 
-  ;;     set the channel active
-  ;;     add its port-to to the contact-list of the process
-  ;;   endif
+  ;;   connect the current graph with the randomly selected process
   ;;   remove it from the remaining-processes
-  ;;end while
+  ;; end while
+  ;; update the processes succ, mailbox and contacts-list
   
   let remaining-processes [self] of processes
   
+  let primary-one one-of remaining-processes
+  set remaining-processes remove primary-one remaining-processes
+  
+  let primary-two one-of remaining-processes
+  set remaining-processes remove primary-two remaining-processes
+  
+  let graph create-graph (list primary-one) (list primary-two)
+  
   while [ not empty? remaining-processes ] [
     let current-process one-of remaining-processes
-    let current-channel one-of [self] of channels with [ port-from = current-process and active? = false ]
-    
-    ask current-channel [
-      set active? true
-    ]
-    
-    ask current-process [
-      set contacts-list lput [port-to] of current-channel contacts-list
-    ]
-    
+    set graph create-graph graph (list current-process)
     set remaining-processes remove current-process remaining-processes
   ]
+  
+  foreach [self] of channels with [ active? = true ] [
+    ask [port-from] of ? [
+      set succ lput [port-to] of ? succ
+      set contacts-list succ
+      set mailbox (list ID succ)
+    ]
+  ]
+end
+
+to-report get-channel [pt pf]
+  report first [self] of channels with [ port-to = pt and port-from = pf ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -197,7 +236,7 @@ population-size
 population-size
 2
 100
-18
+8
 1
 1
 NIL
