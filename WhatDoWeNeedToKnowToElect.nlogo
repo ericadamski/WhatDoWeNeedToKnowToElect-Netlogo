@@ -94,12 +94,47 @@ end
 ;; Main Functions ;;
 ;;;;;;;;;;;;;;;;;;;;
 
+to reach
+  ask processes [ send-message ]    ;; send phase
+  ask processes [ receive-message ] ;; receive phase
+end
+
 to send-message
-  ;;change state to sending
+  ;;send mailbox to all neighbours in contacts
+  
+  ;;algorithm
+  ;; loop through contacts
+  ;; add my message into their message-queue
+  
+  ;; a message is [id, mailbox]
+  let message create-message
+  
+  foreach contacts-list [
+    ask ? [
+      set message-queue lput message message-queue
+    ]
+  ]
 end
 
 to receive-message
-  ;;change state to receiveing
+  ;;loop through message-queue
+  ;;  if the id received is not in my contacts-list add it
+  ;;  or if my mailbox is missing some entries from the received mailbox
+  ;;  update my info and send my mailbox again
+  foreach message-queue [
+    let sent-id first ?
+    let sent-mailbox last ?
+    
+    let is-member member? sent-id contacts-list
+    let missing-members union sent-mailbox mailbox
+    if ( ( not is-member ) or ( not empty? missing-members ) ) [
+      if ( not is-member ) [ set contacts-list lput id contacts-list ]
+      if ( not empty? missing-members ) [
+        set mailbox sentence mailbox missing-members
+      ]
+      send-message
+    ]
+  ]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -194,6 +229,18 @@ to create-connected-graph
       set mailbox (list ID succ)
     ]
   ]
+end
+
+to update-contacts-list
+  
+end
+
+to-report create-message
+  report (list ID mailbox)
+end
+
+to-report union [list1 list2]
+  report filter [ not member? self list2 ] list1
 end
 
 to-report get-channel [pt pf]
