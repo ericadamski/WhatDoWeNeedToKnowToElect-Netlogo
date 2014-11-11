@@ -16,17 +16,19 @@ directed-link-breed [channels channel] ;;Edges
 ;;   send a msg to all known neighbours
 
 ;; is-leader? values
-;;   follower -> false
-;;   leader   -> true
+;;   follower
+;;   leader
+;;   undecided
 
 processes-own [
   contacts-list ;; contains all the channels that the process knows about
   succ          ;; contains all neighbours that are known at the begining this will stay constant after setup
   ID            ;; ID is unique
-  is-leader?    ;; a boolean which gives the leader state of the process
+  is-leader?    ;; a string which gives the leader state of the process
   state         ;; valid for only (modifying, receiving, sending) represented as a string
   message-queue ;; a queue of all received messages to handle one at a time
   mailbox       ;; a set of pairs of id's to Succ-lists of other processes
+  done-send?    ;; a flag to tell if processes has done send phase initial value, false
 ]
 
 channels-own [
@@ -37,6 +39,7 @@ channels-own [
 
 to setup
   clear-all
+  reset-ticks
   
   set selected-ids []
   ;;create processes
@@ -53,6 +56,15 @@ to setup
   display-channels
 end
 
+to go
+  reach
+  
+  display-processes
+  display-channels
+  
+  tick
+end
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Setup-Functions ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -64,11 +76,12 @@ to setup-processes
     setxy random-pxcor random-pycor
     set ID get-new-id
     set contacts-list []
-    set is-leader? false ;; ie. follower
+    set is-leader? "undecided"
     set state "idle"
     set message-queue []
     set mailbox []
     set succ []
+    set done-send? false
   ]
 end
 
@@ -95,8 +108,10 @@ end
 ;;;;;;;;;;;;;;;;;;;;
 
 to reach
-  ask processes [ send-message ]    ;; send phase
-  ask processes [ receive-message ] ;; receive phase
+  ask processes [ if not done-send? [ send-message ] ]    ;; send phase
+  ask processes [ receive-message ]                       ;; receive phase
+  
+  ask processes [ update-channels ]                       ;; display all active channels
 end
 
 to send-message
@@ -108,6 +123,7 @@ to send-message
   
   ;; a message is [id, mailbox]
   let message create-message
+  show mailbox
   
   foreach contacts-list [
     ask ? [
@@ -117,24 +133,29 @@ to send-message
 end
 
 to receive-message
-  ;;loop through message-queue
+  ;;get one message per round through message-queue
   ;;  if the id received is not in my contacts-list add it
   ;;  or if my mailbox is missing some entries from the received mailbox
   ;;  update my info and send my mailbox again
-  foreach message-queue [
-    let sent-id first ?
-    let sent-mailbox last ?
+  if not empty? message-queue [
+    let next-message first message-queue
+    set message-queue remove next-message message-queue
     
-    let is-member member? sent-id contacts-list
+    let sent-id first next-message
+    let sent-mailbox last next-message
+    
+    let is-member member? get-process-with-id sent-id contacts-list
+    show is-member
     let missing-members union sent-mailbox mailbox
     if ( ( not is-member ) or ( not empty? missing-members ) ) [
-      if ( not is-member ) [ set contacts-list lput id contacts-list ]
+      if ( not is-member ) [ set contacts-list lput get-process-with-id sent-id contacts-list ]
       if ( not empty? missing-members ) [
         set mailbox sentence mailbox missing-members
       ]
       send-message
     ]
   ]
+  if( View mailbox = Covered mailbox and is-leader? = "undecided" ) [ show "View and Covered are the same, and leader is undecieded" ]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,14 +165,16 @@ end
 to display-processes
   no-display
   ask processes [
-    ifelse is-leader? [ set color white ]
-                      [ set color green ]
+    if is-leader? = "undecided" [ set color white ]
+    if is-leader? = "follower"  [ set color yellow ]
+    if is-leader? = "leader"    [ set color green ]
   ]
   display
 end
 
 to display-channels
   no-display
+  show "updating channels"
   ask channels [
     hide-link
     if active? [ show-link ]
@@ -162,6 +185,20 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;
 ;; Helper-Functions ;;
 ;;;;;;;;;;;;;;;;;;;;;;
+
+to update-channels
+  let me self
+  show contacts-list
+  foreach contacts-list [
+    if not (me = ?) [
+      ask get-channel me ? [
+        show self
+        show active?
+        if not active? [ set active? true ]
+      ]
+    ]
+  ]
+end
 
 to-report get-new-id
   let random-id random(population-size ^ 3)
@@ -226,13 +263,9 @@ to create-connected-graph
     ask [port-from] of ? [
       set succ lput [port-to] of ? succ
       set contacts-list succ
-      set mailbox (list ID succ)
+      set mailbox (list (list ID succ))
     ]
   ]
-end
-
-to update-contacts-list
-  
 end
 
 to-report create-message
@@ -243,8 +276,50 @@ to-report union [list1 list2]
   report filter [ not member? self list2 ] list1
 end
 
-to-report get-channel [pt pf]
+to-report intersection [list1 list2]
+  report filter [ member? self list2 ] list1
+end
+
+to-report get-channel [pf pt]
   report first [self] of channels with [ port-to = pt and port-from = pf ]
+end
+
+to-report Covered [some-mailbox]
+  ;;{idv|(idv, Succv) ∈ M} all initial lists
+  ;; seach the initial neighbours to see if their info is in my mailbox
+  ;; if so added them to the covered-list
+  ;; after checking the mailbox return the covered-list
+  let covered-list []
+  
+  foreach succ [
+    let current-neighbour ?
+    let neighbour-id [ID] of current-neighbour
+    let neighbour-succ [succ] of current-neighbour
+    
+    foreach some-mailbox [
+      let some-id first ?
+      let some-succ last ?
+    
+      if (neighbour-id = some-id and neighbour-succ = some-succ) [ set covered-list lput current-neighbour covered-list ]
+    ]
+  ]
+  report covered-list
+end
+
+to-report get-process-with-id [some-id]
+  report first [self] of processes with [ ID = some-id ]
+end
+
+to-report View [some-mailbox]
+  let view-set []
+  
+  foreach some-mailbox [
+    let some-id first ?
+    let some-succ last ?
+    
+    if (member? self succ) [ set view-set lput get-process-with-id some-id view-set ]
+  ]
+  report intersection view-set Covered some-mailbox
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -283,7 +358,7 @@ population-size
 population-size
 2
 100
-8
+2
 1
 1
 NIL
@@ -316,6 +391,23 @@ count channels with [ active? = true ]
 17
 1
 11
+
+BUTTON
+95
+48
+158
+81
+Go
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
