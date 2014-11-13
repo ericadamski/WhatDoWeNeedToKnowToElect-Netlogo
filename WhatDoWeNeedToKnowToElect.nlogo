@@ -1,4 +1,4 @@
-globals [ selected-ids ]
+globals [ selected-ids tmp-counter ]
 
 breed [processes process] ;;Nodes
 directed-link-breed [channels channel] ;;Edges
@@ -40,6 +40,8 @@ channels-own [
 to setup
   clear-all
   reset-ticks
+  
+  set tmp-counter 0
   
   set selected-ids []
   ;;create processes
@@ -109,9 +111,7 @@ end
 
 to reach
   ask processes [ if not done-send? [ send-message ] ]    ;; send phase
-  ask processes [ receive-message ]                       ;; receive phase
-  
-  ask processes [ update-channels ]                       ;; display all active channels
+  ask processes [ receive-message update-channels ]       ;; receive phase ;; display all active channels
 end
 
 to send-message
@@ -123,7 +123,6 @@ to send-message
   
   ;; a message is [id, mailbox]
   let message create-message
-  show mailbox
   
   foreach contacts-list [
     ask ? [
@@ -145,8 +144,7 @@ to receive-message
     let sent-mailbox last next-message
     
     let is-member member? get-process-with-id sent-id contacts-list
-    show is-member
-    let missing-members union sent-mailbox mailbox
+    let missing-members difference sent-mailbox mailbox
     if ( ( not is-member ) or ( not empty? missing-members ) ) [
       if ( not is-member ) [ set contacts-list lput get-process-with-id sent-id contacts-list ]
       if ( not empty? missing-members ) [
@@ -155,7 +153,8 @@ to receive-message
       send-message
     ]
   ]
-  if( View mailbox = Covered mailbox and is-leader? = "undecided" ) [ show "View and Covered are the same, and leader is undecieded" ]
+  let local-view View mailbox
+  if( local-view = Covered mailbox and is-leader? = "undecided" ) [ set tmp-counter tmp-counter + 1 ];;show "View and Covered are the same, and leader is undecieded" show (list local-view)]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -188,12 +187,9 @@ end
 
 to update-channels
   let me self
-  show contacts-list
   foreach contacts-list [
     if not (me = ?) [
       ask get-channel me ? [
-        show self
-        show active?
         if not active? [ set active? true ]
       ]
     ]
@@ -273,11 +269,21 @@ to-report create-message
 end
 
 to-report union [list1 list2]
-  report filter [ not member? self list2 ] list1
+  let intersect intersection list1 list2
+  let not-intersect2 filter [ not member? ? intersect ] list2
+  let not-intersect1 filter [ not member? ? intersect ] list1
+  report sentence sentence not-intersect1 not-intersect2 intersect
 end
 
 to-report intersection [list1 list2]
-  report filter [ member? self list2 ] list1
+  report filter [ member? ? list1 ] list2
+end
+
+to-report difference [list1 list2]
+  ;; list1 intersect list2 compliment
+  ;; every element that is in list1 and NOT in list2
+  let intersect intersection list2 list1
+  report filter [ not member? ? intersect ] list1
 end
 
 to-report get-channel [pf pt]
@@ -319,7 +325,7 @@ to-report View [some-mailbox]
     
     if (member? self succ) [ set view-set lput get-process-with-id some-id view-set ]
   ]
-  report intersection view-set Covered some-mailbox
+  report union view-set Covered some-mailbox
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -358,7 +364,7 @@ population-size
 population-size
 2
 100
-2
+12
 1
 1
 NIL
