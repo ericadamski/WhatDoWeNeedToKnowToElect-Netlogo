@@ -154,7 +154,7 @@ to receive-message
     ]
   ]
   let local-view View mailbox
-  if( local-view = Covered mailbox and is-leader? = "undecided" ) [ set tmp-counter tmp-counter + 1 ];;show "View and Covered are the same, and leader is undecieded" show (list local-view)]
+  if( local-view = Covered mailbox and is-leader? = "undecided" ) [ set tmp-counter tmp-counter + 1 show "me"];;show "View and Covered are the same, and leader is undecieded" show (list local-view)]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,12 +318,13 @@ end
 
 to-report View [some-mailbox]
   let view-set []
+  let me self
   
   foreach some-mailbox [
     let some-id first ?
     let some-succ last ?
     
-    if (member? self succ) [ set view-set lput get-process-with-id some-id view-set ]
+    if (member? me some-succ) [ set view-set lput get-process-with-id some-id view-set ]
   ]
   report union view-set Covered some-mailbox
 end
@@ -364,7 +365,7 @@ population-size
 population-size
 2
 100
-12
+8
 1
 1
 NIL
@@ -414,6 +415,17 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+723
+113
+861
+158
+Total View=Covered
+tmp-counter
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
