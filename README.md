@@ -11,7 +11,7 @@ A model based on the research paper :
   * H ⊑↓ G 
       - a subgraph H of G is a subgraph closed by successors of G
   * ⊥
-      - a port number
+      - empty representation
   * Succ(v)
       - a successor list given by { id(v') | v' ∈ next(v) } ( all neighbours with edges from v )
   * M
