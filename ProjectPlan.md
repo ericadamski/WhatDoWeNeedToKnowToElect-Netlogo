@@ -17,6 +17,7 @@
 * Title
 * Abstract
 * Intro : Our project idea in relation to the research paper
+* Model ( see model in research paper )
 * Body :
   * Analyize multiple runs of the leader election algorithm, plot number of nodes, number of ticks, number of messages
     * Generate Statistics, avg, std.dev, mean, etc, that describe our tests
