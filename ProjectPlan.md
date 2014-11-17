@@ -18,6 +18,14 @@
 * Abstract
 * Intro : Our project idea in relation to the research paper
 * Model ( see model in research paper )
+  * Test Properties :
+  ```
+    Run this test for the regular algorithm and the modified one for comparison.
+    ============================================================================
+    Sample Size of 20 random graphs
+    population sizes of 10, 50 and 100 ( run 20 random graphs on each population size )
+    upper limit on time 10, 000 ticks. ( ticks will simulate 1 seconds ) ( can possibly change )
+  ```
 * Body :
   * Analyize multiple runs of the leader election algorithm, plot number of nodes, number of ticks, number of messages
     * Generate Statistics, avg, std.dev, mean, etc, that describe our tests
