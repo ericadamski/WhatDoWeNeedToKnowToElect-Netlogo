@@ -57,7 +57,9 @@ to setup
 end
 
 to go
-  reach
+  ifelse electing-leader?
+  [ elect-leader ]
+  [ reach ]
   
   display-processes
   display-channels
@@ -230,7 +232,7 @@ to recieve-messages
       set super-mailbox union union sent-super-mailbox super-mailbox (list ID mailbox is-leader?)
       
       if not is-member? [
-        set contacts-list union contacts-list (list sent-id)
+        set contacts-list union contacts-list (list get-process-with-id sent-id)
       ]
       
       set is-changed? true
@@ -241,7 +243,13 @@ to recieve-messages
     let local-cover Covered mailbox
     ;;Leader check
     if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
-      
+      ifelse ID < get-lowest-id [
+       set is-leader? "leader"
+      ]
+      [
+        set is-leader? "follower"
+      ]
+      set super-mailbox union super-mailbox (list ID mailbox is-leader?)
     ]
     
     ;;If changed re-send
@@ -477,12 +485,28 @@ to-report assert [answer is]
   report false
 end
 
+to-report get-lowest-id
+  let local-view filter [ not last ? = "leader" ] View mailbox
+  if empty? local-view [ report 0 ]
+  if length local-view = 1 [ report first first local-view ]
+  let lowest-id first first local-view
+  foreach but-first local-view [
+    let current-id first ?
+    if current-id < lowest-id [ set lowest-id current-id ]
+  ]
+  report lowest-id
+end
+
 to-report ids-are-present
   let local-view View mailbox
   let present? true
   
   foreach local-view [
+    let v-id [ID] of ?
+    let v-mailbox [mailbox] of ?
+    let v-leader [is-leader?] of ?
     
+    if not member? (list v-id v-mailbox v-leader) super-mailbox [ set present? false ]
   ]
   
   report present?
@@ -599,7 +623,7 @@ SWITCH
 157
 electing-leader?
 electing-leader?
-1
+0
 1
 -1000
 
