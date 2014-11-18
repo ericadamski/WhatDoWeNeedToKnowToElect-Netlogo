@@ -1,4 +1,4 @@
-globals [ selected-ids tmp-counter ]
+globals [ selected-ids ]
 
 breed [processes process] ;;Nodes
 directed-link-breed [channels channel] ;;Edges
@@ -27,6 +27,7 @@ processes-own [
   is-leader?    ;; a string which gives the leader state of the process
   message-queue ;; a queue of all received messages to handle one at a time
   mailbox       ;; a set of pairs of id's to Succ-lists of other processes
+  super-mailbox ;; a set of tuples (id, Mailbox, is-leader?)
   done-send?    ;; a flag to tell if processes has done send phase initial value, false
 ]
 
@@ -39,8 +40,6 @@ channels-own [
 to setup
   clear-all
   reset-ticks
-  
-  set tmp-counter 0
   
   set selected-ids []
   ;;create processes
@@ -119,6 +118,7 @@ to setup-processes
     set is-leader? "undecided"
     set message-queue []
     set mailbox []
+    set super-mailbox []
     set succ []
     set done-send? false
   ]
@@ -147,11 +147,11 @@ end
 ;;;;;;;;;;;;;;;;;;;;
 
 to reach
-  ask processes [ if not done-send? [ send-reach-message ] ]    ;; send phase
+  ask processes [ if not done-send? [ send-message ] ]    ;; send phase
   ask processes [ receive-reach-message ] ;; receive phase ;; display all active channels
 end
 
-to send-reach-message
+to send-message
   ;;send mailbox to all neighbours in contacts
   
   ;;algorithm
@@ -159,6 +159,7 @@ to send-reach-message
   ;; add my message into their message-queue
   
   ;; a message is [id, mailbox]
+  
   let message create-message
   
   foreach contacts-list [
@@ -190,12 +191,64 @@ to receive-reach-message
       if ( not empty? missing-members ) [
         set mailbox sentence mailbox missing-members
       ]
-      send-reach-message
+      send-message
       update-channels
     ] 
     let local-view View mailbox
     let local-cover Covered mailbox
     if( list-equal? local-view local-cover and is-leader? = "undecided" ) [ show c-of-m mailbox ]
+  ]
+end
+
+to elect-leader
+  ask processes [ if not done-send? [ send-message ] ]
+  ask processes [ recieve-messages ]
+end
+
+to recieve-messages
+  if not empty? message-queue [
+    let next-message first message-queue
+    set message-queue remove next-message message-queue
+    
+    let is-changed? false
+    
+    let sent-id first next-message
+    let sent-super-mailbox last next-message
+    
+    let is-member? member? get-process-with-id sent-id contacts-list
+    let diff-super-mailbox difference sent-super-mailbox super-mailbox
+    
+    if not is-member? or not empty? diff-super-mailbox [
+      let sent-mailbox []
+      
+      foreach sent-super-mailbox [
+        set sent-mailbox union sent-mailbox get-mailbox-from-super-mailbox ?
+      ]
+      
+      set mailbox union mailbox sent-mailbox
+      
+      set super-mailbox union union sent-super-mailbox super-mailbox (list ID mailbox is-leader?)
+      
+      if not is-member? [
+        set contacts-list union contacts-list (list sent-id)
+      ]
+      
+      set is-changed? true
+    ]
+    
+    
+    let local-view View mailbox
+    let local-cover Covered mailbox
+    ;;Leader check
+    if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
+      
+    ]
+    
+    ;;If changed re-send
+    if is-changed? [
+      send-message
+    ]
+    
   ]
 end
 
@@ -301,17 +354,27 @@ to create-connected-graph
     ask [port-from] of ? [
       set succ lput [port-to] of ? succ
       set contacts-list succ
-      set mailbox (list (list ID succ))
+      set mailbox create-mailbox
+      set super-mailbox create-super-mailbox
     ]
   ]
 end
 
-to-report create-message
-  report (list ID mailbox)
+to-report get-mailbox-from-super-mailbox [V]
+  ;; V is of the form [ID, M, leader?], where M is the mailbox
+  report first but-first V
 end
 
-to-report create-super-message
-  report (list ID mailbox is-leader?)
+to-report create-super-mailbox
+  report (list (list ID mailbox is-leader?))
+end
+
+to-report create-mailbox
+  report (list (list ID succ))
+end
+
+to-report create-message
+  report (list ID mailbox)
 end
 
 to-report union [list1 list2]
@@ -413,6 +476,17 @@ to-report assert [answer is]
   if answer = is [ report true ]
   report false
 end
+
+to-report ids-are-present
+  let local-view View mailbox
+  let present? true
+  
+  foreach local-view [
+    
+  ]
+  
+  report present?
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
@@ -501,17 +575,6 @@ NIL
 NIL
 1
 
-MONITOR
-699
-91
-837
-136
-Total View=Covered
-tmp-counter
-17
-1
-11
-
 BUTTON
 22
 86
@@ -528,6 +591,17 @@ NIL
 NIL
 NIL
 1
+
+SWITCH
+23
+124
+188
+157
+electing-leader?
+electing-leader?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
