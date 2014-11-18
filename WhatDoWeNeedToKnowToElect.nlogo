@@ -25,7 +25,6 @@ processes-own [
   succ          ;; contains all neighbours that are known at the begining this will stay constant after setup
   ID            ;; ID is unique
   is-leader?    ;; a string which gives the leader state of the process
-  state         ;; valid for only (modifying, receiving, sending) represented as a string
   message-queue ;; a queue of all received messages to handle one at a time
   mailbox       ;; a set of pairs of id's to Succ-lists of other processes
   done-send?    ;; a flag to tell if processes has done send phase initial value, false
@@ -67,6 +66,45 @@ to go
   tick
 end
 
+to run-tests
+  show "Running union on [1 2 3 7 8] [1 2 3 4 5 6]"
+  show assert union [1 2 3 7 8] [1 2 3 4 5 6] [7 8 4 5 6 1 2 3]
+  show "Running union on [1 2 3 4 5 6] [1 2 3 7 8]"
+  show assert union [1 2 3 4 5 6] [1 2 3 7 8] [4 5 6 7 8 1 2 3]
+  show "Running intersection on [1 2 3 7 8] [1 2 3 4 5 6]"
+  show assert intersection [1 2 3 7 8] [1 2 3 4 5 6] [1 2 3]
+  show "Running intersection on [1 2 3 4 5 6] [1 2 3 7 8]"
+  show assert intersection [1 2 3 4 5 6] [1 2 3 7 8] [1 2 3]
+  show "Running difference on [1 2 3 7 8] [1 2 3 4 5 6]"
+  show assert difference [1 2 3 7 8] [1 2 3 4 5 6] [7 8]
+  show "Running difference on [1 2 3 4 5 6] [1 2 3 7 8]"
+  show assert difference [1 2 3 4 5 6] [1 2 3 7 8] [4 5 6]
+  show "Running union on [] [1 2 3 4]"
+  show assert union [] [1 2 3 4] []
+  show "Running union on [1 2 3 4] []"
+  show assert union [1 2 3 4] [] []
+  show "Running intersection on [] [1 2 3 4]"
+  show assert intersection [] [1 2 3 4] []
+  show "Running intersection on [1 2 3 4] []"
+  show assert intersection [1 2 3 4] [] []
+  show "Running difference on [] [1 2 3 4]"
+  show assert difference [] [1 2 3 4] []
+  show "Running difference on [1 2 3 4] []"
+  show assert difference [1 2 3 4] [] [1 2 3 4]
+  show "Running list-equal on [] [1 2 3 4]"
+  show assert list-equal? [] [1 2 3 4] false
+  show "Running list-equal on [1 2 3 4] []"
+  show assert list-equal? [1 2 3 4] [] false
+  show "Running list-equal on [] []"
+  show assert list-equal? [] [] true
+  show "Running list-equal on [1 2 3 4] [1 2 3 4]"
+  show assert list-equal? [1 2 3 4] [1 2 3 4] true
+  show "Running list-equal [1 2 3 4] [1 2 3 4 5]"
+  show assert list-equal? [1 2 3 4] [1 2 3 4 5] false
+  show "Running list-equal [1 2 3 4 5] [1 2 3 4]"
+  show assert list-equal? [1 2 3 4 5] [1 2 3 4] false
+end
+
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Setup-Functions ;;
 ;;;;;;;;;;;;;;;;;;;;;
@@ -79,7 +117,6 @@ to setup-processes
     set ID get-new-id
     set contacts-list []
     set is-leader? "undecided"
-    set state "idle"
     set message-queue []
     set mailbox []
     set succ []
@@ -110,11 +147,11 @@ end
 ;;;;;;;;;;;;;;;;;;;;
 
 to reach
-  ask processes [ if not done-send? [ send-message ] ]    ;; send phase
-  ask processes [ receive-message update-channels ]       ;; receive phase ;; display all active channels
+  ask processes [ if not done-send? [ send-reach-message ] ]    ;; send phase
+  ask processes [ receive-reach-message ] ;; receive phase ;; display all active channels
 end
 
-to send-message
+to send-reach-message
   ;;send mailbox to all neighbours in contacts
   
   ;;algorithm
@@ -129,9 +166,11 @@ to send-message
       set message-queue lput message message-queue
     ]
   ]
+  
+  set done-send? true
 end
 
-to receive-message
+to receive-reach-message
   ;;get one message per round through message-queue
   ;;  if the id received is not in my contacts-list add it
   ;;  or if my mailbox is missing some entries from the received mailbox
@@ -145,16 +184,19 @@ to receive-message
     
     let is-member member? get-process-with-id sent-id contacts-list
     let missing-members difference sent-mailbox mailbox
+    
     if ( ( not is-member ) or ( not empty? missing-members ) ) [
       if ( not is-member ) [ set contacts-list lput get-process-with-id sent-id contacts-list ]
       if ( not empty? missing-members ) [
         set mailbox sentence mailbox missing-members
       ]
-      send-message
-    ]
+      send-reach-message
+      update-channels
+    ] 
+    let local-view View mailbox
+    let local-cover Covered mailbox
+    if( list-equal? local-view local-cover and is-leader? = "undecided" ) [ show c-of-m mailbox ]
   ]
-  let local-view View mailbox
-  if( local-view = Covered mailbox and is-leader? = "undecided" ) [ set tmp-counter tmp-counter + 1 show "me"];;show "View and Covered are the same, and leader is undecieded" show (list local-view)]
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -268,7 +310,13 @@ to-report create-message
   report (list ID mailbox)
 end
 
+to-report create-super-message
+  report (list ID mailbox is-leader?)
+end
+
 to-report union [list1 list2]
+  if empty? list1 [ report list1 ]
+  if empty? list2 [ report list2 ]
   let intersect intersection list1 list2
   let not-intersect2 filter [ not member? ? intersect ] list2
   let not-intersect1 filter [ not member? ? intersect ] list1
@@ -316,17 +364,54 @@ to-report get-process-with-id [some-id]
   report first [self] of processes with [ ID = some-id ]
 end
 
-to-report View [some-mailbox]
-  let view-set []
+to-report view-set [some-mailbox]
+  let vset []
   let me self
   
   foreach some-mailbox [
     let some-id first ?
     let some-succ last ?
     
-    if (member? me some-succ) [ set view-set lput get-process-with-id some-id view-set ]
+    if (member? me some-succ) [ set vset lput get-process-with-id some-id vset ]
   ]
-  report union view-set Covered some-mailbox
+  report vset
+end
+
+to-report is-channel-active? [pf pt]
+  let is-active? false
+  ask get-channel pf pt [
+    if active? [set is-active? true]
+  ]
+  report is-active?
+end
+
+to-report c-of-m [some-mailbox]
+  ;; reports a new graph C(M) = (Vc, Ec) such that Vc = view-set of some-mailbox
+  ;; and Ec = edges already defined in the mailbox
+  ;; since we store graphs differently, we will only give Vc as the return value of this function
+  report view-set some-mailbox
+end
+
+to-report list-equal? [list1 list2]
+  if empty? list1 and not empty? list2 [ report false ]
+  if empty? list2 and not empty? list1 [ report false ]
+  
+  foreach list1 [
+    if not member? ? list2 [ report false ]
+  ]
+  foreach list2 [
+    if not member? ? list1 [ report false ]
+  ]
+  report true
+end
+
+to-report View [some-mailbox]
+  report union view-set some-mailbox Covered some-mailbox
+end
+
+to-report assert [answer is]
+  if answer = is [ report true ]
+  report false
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -365,7 +450,7 @@ population-size
 population-size
 2
 100
-8
+5
 1
 1
 NIL
@@ -391,7 +476,7 @@ NIL
 MONITOR
 699
 36
-811
+837
 81
 Active Channels
 count channels with [ active? = true ]
@@ -417,15 +502,32 @@ NIL
 1
 
 MONITOR
-723
-113
-861
-158
+699
+91
+837
+136
 Total View=Covered
 tmp-counter
 17
 1
 11
+
+BUTTON
+22
+86
+159
+119
+Run Tests
+run-tests
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
