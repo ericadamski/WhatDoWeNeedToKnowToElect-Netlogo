@@ -8,16 +8,17 @@
 
 * Witten in Netlogo
 * General Principle :
-  * - [ ] Create a random connect directed graph with a given population size ( slider )
+  * - [x] Create a random connect directed graph with a given population size ( slider )
   * - [x] Model the REACH Algorithm mentioned in the paper
   * - [ ] Model the Leader Elect algorithm mentioned in the paper
+  * - [x] Added Distance to channels and add a Time-To-Live to messages
 
 ## Algorithm Analysis
 
-* - [ ] Title
-* - [ ] Abstract
+* - [x] Title
+* - [x] Abstract
 * - [ ] Defenition of Distributed Algorithms
-* - [ ] Intro : Our project idea in relation to the research paper
+* - [x] Intro : Our project idea in relation to the research paper
 * - [ ] Model ( see model in research paper )
   * Test Properties :
   ```
@@ -48,4 +49,4 @@
   * Link back to main paper abstract, compare or prove why our test did or did not work
   * how this relates to real world
 
-* - [ ] Sources -> obviously the research paper
+* - [x] Sources -> obviously the research paper
