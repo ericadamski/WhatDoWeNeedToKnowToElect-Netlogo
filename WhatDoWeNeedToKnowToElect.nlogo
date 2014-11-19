@@ -32,9 +32,10 @@ processes-own [
 ]
 
 channels-own [
-  port-to      ;; the process which the channel goes to
-  port-from    ;; the process which the channel comes from
-  active?      ;; if the channel is currently in use by a process
+  port-to          ;; the process which the channel goes to
+  port-from        ;; the process which the channel comes from
+  active?          ;; if the channel is currently in use by a process
+  current-distance ;; length of the channel, will take time * distance to travel
 ]
 
 to setup
@@ -65,6 +66,11 @@ to go
   display-channels
   
   tick
+end
+
+to clear
+  clear-all
+  reset-ticks
 end
 
 to run-tests
@@ -137,6 +143,7 @@ to setup-channels
         set port-from me
         set port-to ?
         set active? false
+        set current-distance calculate-distance port-from port-to
       ]
     ]
   ]
@@ -160,11 +167,12 @@ to send-message
   ;; loop through contacts
   ;; add my message into their message-queue
   
-  ;; a message is [id, mailbox]
+  ;; a message is [ ttl ,[id, mailbox] ]
   
-  let message create-message
+  let me self
   
   foreach contacts-list [
+    let message create-message get-channel me ?
     ask ? [
       set message-queue lput message message-queue
     ]
@@ -178,28 +186,38 @@ to receive-reach-message
   ;;  if the id received is not in my contacts-list add it
   ;;  or if my mailbox is missing some entries from the received mailbox
   ;;  update my info and send my mailbox again
+  
+  ;; message looks like [ ttl, [message] ]
   if not empty? message-queue [
-    let next-message first message-queue
-    set message-queue remove next-message message-queue
+    let next-message first message-queue ;; see message above
+    let current-time first next-message ;; ttl
+    set message-queue remove next-message message-queue ;; remove the current message from the queue
+    set next-message first but-first next-message ;; [message]
     
-    let sent-id first next-message
-    let sent-mailbox last next-message
-    
-    let is-member member? get-process-with-id sent-id contacts-list
-    let missing-members difference sent-mailbox mailbox
-    
-    if ( ( not is-member ) or ( not empty? missing-members ) ) [
-      if ( not is-member ) [ set contacts-list lput get-process-with-id sent-id contacts-list ]
-      if ( not empty? missing-members ) [
-        set mailbox sentence mailbox missing-members
-      ]
-      send-message
-      update-channels
-    ] 
-    let local-view View mailbox
-    let local-cover Covered mailbox
-    if( list-equal? local-view local-cover and is-leader? = "undecided" ) [ show c-of-m mailbox ]
+    ifelse current-time <= 0 [
+      let sent-id first next-message
+      let sent-mailbox last next-message
+      
+      let is-member member? get-process-with-id sent-id contacts-list
+      let missing-members difference sent-mailbox mailbox
+      
+      if ( ( not is-member ) or ( not empty? missing-members ) ) [
+        if ( not is-member ) [ set contacts-list lput get-process-with-id sent-id contacts-list ]
+        if ( not empty? missing-members ) [
+          set mailbox sentence mailbox missing-members
+        ]
+        send-message
+        update-channels
+      ] 
+      let local-view View mailbox
+      let local-cover Covered mailbox
+      if( list-equal? local-view local-cover and is-leader? = "undecided" ) [ show c-of-m mailbox ]
+    ]
+    [
+      set message-queue fput (list (current-time - 1) next-message) message-queue
+    ]
   ]
+  show message-queue
 end
 
 to elect-leader
@@ -208,56 +226,64 @@ to elect-leader
 end
 
 to recieve-messages
+  ;; see above for defenitions of variables
   if not empty? message-queue [
     let next-message first message-queue
     set message-queue remove next-message message-queue
+    let current-time first next-message
+    set next-message first but-first next-message
     
-    let is-changed? false
-    
-    let sent-id first next-message
-    let sent-super-mailbox last next-message
-    
-    let is-member? member? get-process-with-id sent-id contacts-list
-    let diff-super-mailbox difference sent-super-mailbox super-mailbox
-    
-    if not is-member? or not empty? diff-super-mailbox [
-      let sent-mailbox []
+    ifelse current-time <= 0 [
+      let is-changed? false
       
-      foreach sent-super-mailbox [
-        set sent-mailbox union sent-mailbox get-mailbox-from-super-mailbox ?
+      let sent-id first next-message
+      let sent-super-mailbox last next-message
+      
+      let is-member? member? get-process-with-id sent-id contacts-list
+      let diff-super-mailbox difference sent-super-mailbox super-mailbox
+      
+      if not is-member? or not empty? diff-super-mailbox [
+        let sent-mailbox []
+        
+        foreach sent-super-mailbox [
+          set sent-mailbox union sent-mailbox get-mailbox-from-super-mailbox ?
+        ]
+        
+        set mailbox union mailbox sent-mailbox
+        
+        set super-mailbox union union sent-super-mailbox super-mailbox (list ID mailbox is-leader?)
+        
+        if not is-member? [
+          set contacts-list union contacts-list (list get-process-with-id sent-id)
+        ]
+        
+        set is-changed? true
       ]
       
-      set mailbox union mailbox sent-mailbox
       
-      set super-mailbox union union sent-super-mailbox super-mailbox (list ID mailbox is-leader?)
-      
-      if not is-member? [
-        set contacts-list union contacts-list (list get-process-with-id sent-id)
+      let local-view View mailbox
+      let local-cover Covered mailbox
+      ;;Leader check
+      if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
+        ifelse ID < get-lowest-id [
+          set is-leader? "leader"
+        ]
+        [
+          set is-leader? "follower"
+        ]
+        set super-mailbox union super-mailbox (list ID mailbox is-leader?)
       ]
       
-      set is-changed? true
+      ;;If changed re-send
+      if is-changed? [
+        send-message
+      ]
     ]
-    
-    
-    let local-view View mailbox
-    let local-cover Covered mailbox
-    ;;Leader check
-    if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
-      ifelse ID < get-lowest-id [
-       set is-leader? "leader"
-      ]
-      [
-        set is-leader? "follower"
-      ]
-      set super-mailbox union super-mailbox (list ID mailbox is-leader?)
+    [
+      set message-queue fput (list (current-time - 1) next-message) message-queue
     ]
-    
-    ;;If changed re-send
-    if is-changed? [
-      send-message
-    ]
-    
   ]
+  show message-queue
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -381,8 +407,8 @@ to-report create-mailbox
   report (list (list ID succ))
 end
 
-to-report create-message
-  report (list ID mailbox)
+to-report create-message [connecting-channel]
+  report (list (Time * [current-distance] of connecting-channel) (list ID mailbox))
 end
 
 to-report union [list1 list2]
@@ -511,15 +537,23 @@ to-report ids-are-present
   
   report present?
 end
+
+to-report calculate-distance [pf pt]
+  let dist 0
+  ask pf [
+    set dist floor distance pt
+  ]
+  report dist
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+200
 10
-649
-470
+753
+584
 16
 16
-13.0
+16.455
 1
 10
 1
@@ -542,7 +576,7 @@ ticks
 SLIDER
 21
 10
-193
+188
 43
 population-size
 population-size
@@ -557,7 +591,7 @@ HORIZONTAL
 BUTTON
 22
 47
-88
+126
 80
 Setup
 setup
@@ -572,10 +606,10 @@ NIL
 1
 
 MONITOR
-699
-36
-837
-81
+23
+161
+188
+206
 Active Channels
 count channels with [ active? = true ]
 17
@@ -583,10 +617,10 @@ count channels with [ active? = true ]
 11
 
 BUTTON
-95
-48
-158
-81
+132
+47
+188
+80
 Go
 go
 NIL
@@ -602,7 +636,7 @@ NIL
 BUTTON
 22
 86
-159
+126
 119
 Run Tests
 run-tests
@@ -623,9 +657,41 @@ SWITCH
 157
 electing-leader?
 electing-leader?
-0
+1
 1
 -1000
+
+BUTTON
+132
+87
+187
+120
+Clear
+clear
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+23
+213
+188
+246
+Time
+Time
+0
+5
+0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
