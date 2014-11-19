@@ -10,7 +10,7 @@
 * General Principle :
   * - [ ] Create a random connect directed graph with a given population size ( slider )
   * - [x] Model the REACH Algorithm mentioned in the paper
-  * - [/] Model the Leader Elect algorithm mentioned in the paper
+  * - [ ] Model the Leader Elect algorithm mentioned in the paper
 
 ## Algorithm Analysis
 
@@ -18,7 +18,7 @@
 * - [x] Abstract
 * - [ ] Defenition of Distributed Algorithms
 * - [x] Intro : Our project idea in relation to the research paper
-* - [/] Model ( see model in research paper )
+* - [ ] Model ( see model in research paper )
   * Test Properties :
   ```
     Run this test for the regular algorithm and the modified one for comparison.
