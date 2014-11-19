@@ -1,4 +1,4 @@
-globals [ selected-ids ]
+globals [ selected-ids number-of-messages ]
 
 breed [processes process] ;;Nodes
 directed-link-breed [channels channel] ;;Edges
@@ -42,6 +42,8 @@ to setup
   clear-all
   reset-ticks
   
+  set number-of-messages 0
+  
   set selected-ids []
   ;;create processes
   ;;  assign them a random position within the window
@@ -64,6 +66,8 @@ to go
   
   display-processes
   display-channels
+  
+  set number-of-messages message-count
   
   tick
 end
@@ -217,7 +221,6 @@ to receive-reach-message
       set message-queue fput (list (current-time - 1) next-message) message-queue
     ]
   ]
-  show message-queue
 end
 
 to elect-leader
@@ -283,7 +286,6 @@ to recieve-messages
       set message-queue fput (list (current-time - 1) next-message) message-queue
     ]
   ]
-  show message-queue
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -545,6 +547,14 @@ to-report calculate-distance [pf pt]
   ]
   report dist
 end
+
+to-report message-count
+  let msg-count 0
+  foreach [self] of processes [
+    set msg-count msg-count + length [message-queue] of ?
+  ]
+  report msg-count
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 200
@@ -680,9 +690,9 @@ NIL
 
 SLIDER
 23
-213
+261
 188
-246
+294
 Time
 Time
 0
@@ -692,6 +702,35 @@ Time
 1
 NIL
 HORIZONTAL
+
+PLOT
+773
+35
+1067
+248
+Messages Vs. Time
+Time
+# of Messages
+0.0
+1000.0
+0.0
+1000.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count number-of-messages"
+
+MONITOR
+23
+212
+188
+257
+Message Count
+count number-of-messages
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
