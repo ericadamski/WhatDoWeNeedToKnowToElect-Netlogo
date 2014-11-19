@@ -10,11 +10,6 @@ directed-link-breed [channels channel] ;;Edges
 ;; sending always sends to all neighbours ( in contacts list ), receive only from a single
 ;; neighbour
 
-;; process state transitions are :
-;;   modify its state
-;;   receive a msg from one neighbour
-;;   send a msg to all known neighbours
-
 ;; is-leader? values
 ;;   follower
 ;;   leader
@@ -592,7 +587,7 @@ population-size
 population-size
 2
 100
-5
+12
 1
 1
 NIL
@@ -667,7 +662,7 @@ SWITCH
 157
 electing-leader?
 electing-leader?
-1
+0
 1
 -1000
 
@@ -697,7 +692,7 @@ Time
 Time
 0
 5
-0
+1
 1
 1
 NIL
@@ -712,14 +707,14 @@ Messages Vs. Time
 Time
 # of Messages
 0.0
-1000.0
+10.0
 0.0
-1000.0
+10.0
 true
 false
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot count number-of-messages"
+"default" 1.0 0 -16777216 true "" "plot number-of-messages"
 
 MONITOR
 23
@@ -727,10 +722,27 @@ MONITOR
 188
 257
 Message Count
-count number-of-messages
+number-of-messages
 17
 1
 11
+
+BUTTON
+23
+299
+188
+332
+Go
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
