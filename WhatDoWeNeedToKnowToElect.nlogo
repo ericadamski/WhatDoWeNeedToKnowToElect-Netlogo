@@ -240,29 +240,20 @@ to recieve-messages
       let is-member? member? get-process-with-id sent-id contacts-list
       let diff-super-mailbox difference sent-super-mailbox super-mailbox
       
-      show "Is member"
-      show is-member?
-      show "super-mailbox-diff"
-      show diff-super-mailbox
-      
       if not is-member? or not empty? diff-super-mailbox [
         let sent-mailbox []
         
         foreach sent-super-mailbox [
-          show "?"
-          show ?
           set sent-mailbox union sent-mailbox get-mailbox-from-super-mailbox ?
         ]
         
-        show "sent mailbox"
-        show sent-mailbox
-        
         set mailbox union mailbox sent-mailbox
         
-        set super-mailbox union union sent-super-mailbox super-mailbox (list ID mailbox is-leader?)
+        set super-mailbox union union sent-super-mailbox super-mailbox (list (list ID mailbox is-leader?))
         
         if not is-member? [
-          set contacts-list union contacts-list (list get-process-with-id sent-id)
+          set contacts-list lput get-process-with-id sent-id contacts-list
+          show contacts-list
         ]
         
         set is-changed? true
@@ -271,15 +262,22 @@ to recieve-messages
       
       let local-view View mailbox
       let local-cover Covered mailbox
+      let local-c-of-m c-of-m mailbox
+      show "C(M)"
+      show local-c-of-m
+      show "View"
+      show local-view
+      show "cover"
+      show local-cover
       ;;Leader check
       if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
-        ifelse ID < get-lowest-id [
+        ifelse ID < get-lowest-id and not already-leader [
           set is-leader? "leader"
         ]
         [
           set is-leader? "follower"
         ]
-        set super-mailbox union super-mailbox (list ID mailbox is-leader?)
+        set super-mailbox union super-mailbox (list (list ID mailbox is-leader?))
         set is-changed? true
       ]
       
@@ -292,6 +290,7 @@ to recieve-messages
       set message-queue fput (list (current-time - 1) next-message) message-queue
     ]
   ]
+  update-channels
 end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
@@ -421,8 +420,8 @@ to-report create-message [connecting-channel]
 end
 
 to-report union [list1 list2]
-  if empty? list1 [ report list1 ]
-  if empty? list2 [ report list2 ]
+  if empty? list1 [ report list2 ]
+  if empty? list2 [ report list1 ]
   let intersect intersection list1 list2
   let not-intersect2 filter [ not member? ? intersect ] list2
   let not-intersect1 filter [ not member? ? intersect ] list1
@@ -451,7 +450,7 @@ to-report Covered [some-mailbox]
   ;; after checking the mailbox return the covered-list
   let covered-list []
   
-  foreach succ [
+  foreach contacts-list [
     let current-neighbour ?
     let neighbour-id [ID] of current-neighbour
     let neighbour-succ [succ] of current-neighbour
@@ -521,12 +520,18 @@ to-report assert [answer is]
 end
 
 to-report get-lowest-id
-  let local-view filter [ not last ? = "leader" ] View mailbox
-  if empty? local-view [ report 0 ]
-  if length local-view = 1 [ report first first local-view ]
-  let lowest-id first first local-view
+  show mailbox
+  let local-view View mailbox
+  foreach local-view [
+    if [is-leader?] of ? = "leader" [
+      set local-view remove ? local-view
+    ]
+  ]
+  show local-view
+  if empty? local-view [ report -1 ]
+  let lowest-id [ID] of first local-view
   foreach but-first local-view [
-    let current-id first ?
+    let current-id [ID] of ?
     if current-id < lowest-id [ set lowest-id current-id ]
   ]
   report lowest-id
@@ -561,6 +566,13 @@ to-report message-count
     set msg-count msg-count + length [message-queue] of ?
   ]
   report msg-count
+end
+
+to-report already-leader
+  foreach super-mailbox [
+   if last ? = "leader" [ report true ]  
+  ]
+  report false
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -599,7 +611,7 @@ population-size
 population-size
 2
 100
-12
+3
 1
 1
 NIL
