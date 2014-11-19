@@ -240,12 +240,22 @@ to recieve-messages
       let is-member? member? get-process-with-id sent-id contacts-list
       let diff-super-mailbox difference sent-super-mailbox super-mailbox
       
+      show "Is member"
+      show is-member?
+      show "super-mailbox-diff"
+      show diff-super-mailbox
+      
       if not is-member? or not empty? diff-super-mailbox [
         let sent-mailbox []
         
         foreach sent-super-mailbox [
+          show "?"
+          show ?
           set sent-mailbox union sent-mailbox get-mailbox-from-super-mailbox ?
         ]
+        
+        show "sent mailbox"
+        show sent-mailbox
         
         set mailbox union mailbox sent-mailbox
         
@@ -270,6 +280,7 @@ to recieve-messages
           set is-leader? "follower"
         ]
         set super-mailbox union super-mailbox (list ID mailbox is-leader?)
+        set is-changed? true
       ]
       
       ;;If changed re-send
@@ -405,7 +416,8 @@ to-report create-mailbox
 end
 
 to-report create-message [connecting-channel]
-  report (list (Time * [current-distance] of connecting-channel) (list ID mailbox))
+  ifelse electing-leader? [ report (list (Time * [current-distance] of connecting-channel) (list ID super-mailbox)) ]
+                          [ report (list (Time * [current-distance] of connecting-channel) (list ID mailbox)) ]
 end
 
 to-report union [list1 list2]
@@ -692,7 +704,7 @@ Time
 Time
 0
 5
-1
+0
 1
 1
 NIL
