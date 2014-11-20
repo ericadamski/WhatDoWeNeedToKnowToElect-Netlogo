@@ -23,6 +23,6 @@ A model based on the research paper :
   * Vc
       - View(M)
   * Ec
-      - for a pair ( id, id' ) the pair ( id, Succ ) ∈ M AND id' ∈ Succ i.e { (id, id') | (id,Succ) ∈ M and id' ∈ Succ }
+      - The set of edges in the View of M
   * C(M)
-      - (Vc,Ec)
+      - (Vc,Ec) a graph composed of the View of a process
