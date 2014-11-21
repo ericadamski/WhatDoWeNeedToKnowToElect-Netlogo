@@ -26,3 +26,7 @@ A model based on the research paper :
       - The set of edges in the View of M
   * C(M)
       - (Vc,Ec) a graph composed of the View of a process
+  * F
+      - a family of graphs
+  * XF (Characteristic Function)
+      - In this model we are assuming that all nodes know the size of the network, so for the characteristic function we count the number of vertices in C(M) in order to determine if C(M) ∈ the family F
