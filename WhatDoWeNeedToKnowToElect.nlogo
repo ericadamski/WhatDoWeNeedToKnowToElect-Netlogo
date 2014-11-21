@@ -253,7 +253,6 @@ to recieve-messages
         
         if not is-member? [
           set contacts-list lput get-process-with-id sent-id contacts-list
-          show contacts-list
         ]
         
         set is-changed? true
@@ -263,14 +262,8 @@ to recieve-messages
       let local-view View mailbox
       let local-cover Covered mailbox
       let local-c-of-m c-of-m mailbox
-      show "C(M)"
-      show local-c-of-m
-      show "View"
-      show local-view
-      show "cover"
-      show local-cover
       ;;Leader check
-      if is-leader? = "undecided" and list-equal? local-view local-cover and ids-are-present [
+      if is-leader? = "undecided" and n-vertex-characteristic-function mailbox and list-equal? local-view local-cover and ids-are-present [
         ifelse ID < get-lowest-id and not already-leader [
           set is-leader? "leader"
         ]
@@ -309,7 +302,6 @@ end
 
 to display-channels
   no-display
-  show "updating channels"
   ask channels [
     hide-link
     if active? [ show-link ]
@@ -520,14 +512,12 @@ to-report assert [answer is]
 end
 
 to-report get-lowest-id
-  show mailbox
   let local-view View mailbox
   foreach local-view [
     if [is-leader?] of ? = "leader" [
       set local-view remove ? local-view
     ]
   ]
-  show local-view
   if empty? local-view [ report -1 ]
   let lowest-id [ID] of first local-view
   foreach but-first local-view [
@@ -570,8 +560,19 @@ end
 
 to-report already-leader
   foreach super-mailbox [
-   if last ? = "leader" [ report true ]  
+    show ?
+    if last ? = "leader" [ report true ]  
   ]
+  report false
+end
+
+to-report n-vertex-characteristic-function [some-mailbox]
+  let unique-ids []
+  foreach some-mailbox [
+    let some-id first ?
+    if not member? some-id unique-ids [ set unique-ids lput some-id unique-ids ]
+  ]
+  if length unique-ids = (population-size - 1) [ report true ]
   report false
 end
 @#$#@#$#@
@@ -611,7 +612,7 @@ population-size
 population-size
 2
 100
-3
+10
 1
 1
 NIL
