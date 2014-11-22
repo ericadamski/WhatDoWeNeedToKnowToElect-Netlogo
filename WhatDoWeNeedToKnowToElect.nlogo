@@ -232,8 +232,6 @@ to recieve-messages
     set next-message first but-first next-message
     
     ifelse current-time <= 0 [
-      let is-changed? false
-      
       let sent-id first next-message
       let sent-super-mailbox last next-message
       
@@ -248,40 +246,41 @@ to recieve-messages
         ]
         
         set mailbox union mailbox sent-mailbox
-        
+        ;;show "Super-mailbox"
+        ;;show super-mailbox
+        ;;show "sent smailbox"
+        ;;show sent-super-mailbox
+        ;;show "my stuff"
+        ;;show (list (list ID mailbox is-leader?))
+        ;;show "first union"
+        ;;show union super-mailbox sent-super-mailbox
+        ;;show "union of union"
+        ;;show union (list (list ID mailbox is-leader?)) union super-mailbox sent-super-mailbox
         set super-mailbox union union sent-super-mailbox super-mailbox (list (list ID mailbox is-leader?))
         
         if not is-member? [
           set contacts-list lput get-process-with-id sent-id contacts-list
         ]
-        
-        set is-changed? true
-      ]
-      
-      
-      let local-view View mailbox
-      let local-cover Covered mailbox
-      let local-c-of-m c-of-m mailbox
-      ;;Leader check
-      if is-leader? = "undecided" and n-vertex-characteristic-function mailbox and list-equal? local-view local-cover and ids-are-present [
-        ifelse ID < get-lowest-id and not already-leader [
-          set is-leader? "leader"
-        ]
-        [
-          set is-leader? "follower"
-        ]
-        set super-mailbox union super-mailbox (list (list ID mailbox is-leader?))
-        set is-changed? true
-      ]
-      
-      ;;If changed re-send
-      if is-changed? [
         send-message
       ]
     ]
     [
       set message-queue fput (list (current-time - 1) next-message) message-queue
     ]
+  ]
+  let local-view View mailbox
+  let local-cover Covered mailbox
+  let local-c-of-m c-of-m mailbox
+  ;;Leader check
+  if is-leader? = "undecided" and n-vertex-characteristic-function mailbox and list-equal? local-view local-cover and ids-are-present [
+    ifelse not already-leader and ID < get-lowest-id [
+      set is-leader? "leader"
+    ]
+    [
+      set is-leader? "follower"
+    ]
+    set super-mailbox union super-mailbox (list (list ID mailbox is-leader?))
+    send-message
   ]
   update-channels
 end
@@ -339,20 +338,26 @@ end
 to-report create-graph [current-graph current-process-as-list]
   ;; g1 and g2 are lists of processes that have been connected
   ;; it should hold true that if v is in g1 then v cannot be in g2
-  let randomize ((random-float 1) mod 2)
-  let connecting-channel 0
-  ifelse randomize = 0 [ set connecting-channel get-channel one-of current-graph one-of current-process-as-list ]
-                       [ set connecting-channel get-channel one-of current-process-as-list one-of current-graph ]
+  let rand random-float 1
+  let pf one-of current-graph
+  let pt one-of current-process-as-list
+  
+  let connecting-channel-from 0
+  
+  ifelse (rand mod 2) = 0 [ set connecting-channel-from get-channel pf pt ]
+                          [ set connecting-channel-from get-channel pt pf ]
+  
+  ;;let connecting-channel-from get-channel pf pt
+  ;;let connecting-channel-to get-channel pt pf
               
-  ask connecting-channel [
-    set active? true
-  ]
+  ask connecting-channel-from [ set active? true ]
+  ;;ask connecting-channel-to   [ set active? true ]
   
   report lput first current-process-as-list current-graph
 end
 
 to create-connected-graph
-  ;; every process has to have at-least one edge connected coming from it
+  ;; every process has to have at-least two edges connected coming from it
   ;; this means at least for a graph G (V,E), where V represents the processes
   ;; and E represents the channels there will initially be |V| = population-size many processes
   ;; and |E| = |V| - 1 many channels
@@ -390,6 +395,11 @@ to create-connected-graph
       set mailbox create-mailbox
       set super-mailbox create-super-mailbox
     ]
+  ]
+  
+  ask processes [ 
+    if empty? mailbox [ set mailbox create-mailbox ]
+    if empty? super-mailbox [ set super-mailbox create-super-mailbox ]
   ]
 end
 
@@ -442,7 +452,7 @@ to-report Covered [some-mailbox]
   ;; after checking the mailbox return the covered-list
   let covered-list []
   
-  foreach contacts-list [
+  foreach [self] of processes [
     let current-neighbour ?
     let neighbour-id [ID] of current-neighbour
     let neighbour-succ [succ] of current-neighbour
@@ -486,7 +496,7 @@ to-report c-of-m [some-mailbox]
   ;; reports a new graph C(M) = (Vc, Ec) such that Vc = view-set of some-mailbox
   ;; and Ec = edges already defined in the mailbox
   ;; since we store graphs differently, we will only give Vc as the return value of this function
-  report view-set some-mailbox
+  report View some-mailbox
 end
 
 to-report list-equal? [list1 list2]
@@ -513,32 +523,20 @@ end
 
 to-report get-lowest-id
   let local-view View mailbox
-  foreach local-view [
-    if [is-leader?] of ? = "leader" [
-      set local-view remove ? local-view
-    ]
-  ]
+  set local-view remove self local-view
   if empty? local-view [ report -1 ]
-  let lowest-id [ID] of first local-view
-  foreach but-first local-view [
-    let current-id [ID] of ?
-    if current-id < lowest-id [ set lowest-id current-id ]
-  ]
-  report lowest-id
+  report min map [ [ID] of ? ] local-view
 end
 
 to-report ids-are-present
-  let local-view View mailbox
   let present? true
-  
-  foreach local-view [
+  foreach View mailbox [
     let v-id [ID] of ?
     let v-mailbox [mailbox] of ?
     let v-leader [is-leader?] of ?
     
     if not member? (list v-id v-mailbox v-leader) super-mailbox [ set present? false ]
   ]
-  
   report present?
 end
 
@@ -559,21 +557,22 @@ to-report message-count
 end
 
 to-report already-leader
+  let leader? false
   foreach super-mailbox [
-    show ?
-    if last ? = "leader" [ report true ]  
+    if last ? = "leader" [ set leader? true ]  
   ]
-  report false
+  report leader?
 end
 
 to-report n-vertex-characteristic-function [some-mailbox]
   let unique-ids []
-  foreach some-mailbox [
-    let some-id first ?
+  foreach c-of-m some-mailbox [
+    let some-id [ID] of ?
     if not member? some-id unique-ids [ set unique-ids lput some-id unique-ids ]
-  ]
-  if length unique-ids = (population-size - 1) [ report true ]
+  ] 
+  if length unique-ids = population-size [ report true ]
   report false
+  ;;report list-equal? unique-ids selected-ids
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -612,7 +611,7 @@ population-size
 population-size
 2
 100
-10
+5
 1
 1
 NIL
