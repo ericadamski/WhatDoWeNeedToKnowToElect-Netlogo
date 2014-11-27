@@ -10,12 +10,12 @@
 * General Principle :
   * - [x] Create a random connect directed graph with a given population size ( slider )
   * - [x] Model the REACH Algorithm mentioned in the paper
-  * - [ ] Model the Leader Elect algorithm mentioned in the paper
+  * - [x] Model the Leader Elect algorithm mentioned in the paper
   * - [x] Added Distance to channels and add a Time-To-Live to messages
 
 ## Algorithm Analysis
 
-* - [x] Title
+* - [x] Title ( Real-Time Analysis of the Leader Election Algorithm Provided in 'What Do We Need To Know To Elect In a Network With Unknown Participants' )
 * - [x] Abstract
 * - [ ] Defenition of Distributed Algorithms
 * - [x] Intro : Our project idea in relation to the research paper
@@ -25,8 +25,12 @@
     Run this test for the regular algorithm and the modified one for comparison.
     ============================================================================
     Sample Size of 20 random graphs
-    population sizes of 10, 50 and 100 ( run 20 random graphs on each population size )
+    population sizes of 10 ( This takes resonably long )
     upper limit on time 10, 000 ticks. ( ticks will simulate 1 seconds ) ( can possibly change )
+    we shall calculate the theoretical running time and message complexity
+    then we shall run 20 tests and compare our results to the theoretical formulas
+    we should also note that adding a time delay will not change the outcome of the algorithm,
+    base on the isolation lemma ( which can be found in the paper )
   ```
   * Comparison of the papers model to our model
     * Msg Passing Model -> added distance
@@ -40,11 +44,9 @@
     * Remains Universal -> give explanation
   ( For all same above restate in your own words the general idea )
 * - [ ] Body
-  * Analyize multiple runs of the leader election algorithm, plot number of nodes, number of ticks, number of messages
-    * Generate Statistics, avg, std.dev, mean, etc, that describe our tests
-  * Change the base algorithm ( restate the algorithm in sudo code here! ) to include distance between nodes ( instead of distance = 1 ) run the same tests as above, with randomly generated graphs
-    * Generate and analyize the statistcs of the modified algorithm, if this algorithm doesn't work, we should give a short proof about why.
-    * See in paper 'A Necessary and Sufficient Condition' -> how it will help prove our hypothesis
+  * There seems to be an overhead of time we need to consider to build the network using a type of flood-echo algorithm ( Talk to me about this if you need help )
+  * You may need to program in some more funcitons to help plot the msg complexity and such.
+  * Analyize multiple runs of the leader election algorithm, plot number of nodes, number of ticks, number of messages come up with time analysis ( big O notation ) and message complexity ( big O notation ) we need to discuss the theorectical formulas before hand. Then we can compare our results and discuss them. Explain some faults in our process and maybe some faults in the algorithm.
 * - [ ] Conclusion
   * Link back to main paper abstract, compare or prove why our test did or did not work
   * how this relates to real world
