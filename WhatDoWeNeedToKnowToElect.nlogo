@@ -1,4 +1,4 @@
-globals [ selected-ids number-of-messages ]
+globals [ selected-ids number-of-messages total-messages ]
 
 breed [processes process] ;;Nodes
 directed-link-breed [channels channel] ;;Edges
@@ -38,6 +38,7 @@ to setup
   reset-ticks
   
   set number-of-messages 0
+  set total-messages 0
   
   set selected-ids []
   ;;create processes
@@ -173,6 +174,7 @@ to send-message
   foreach contacts-list [
     let message create-message get-channel me ?
     ask ? [
+      set total-messages total-messages + 1
       set message-queue lput message message-queue
     ]
   ]
