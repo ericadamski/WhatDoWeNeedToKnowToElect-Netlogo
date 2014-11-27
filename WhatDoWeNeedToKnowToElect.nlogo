@@ -613,7 +613,7 @@ population-size
 population-size
 2
 100
-5
+2
 1
 1
 NIL
@@ -769,6 +769,17 @@ NIL
 NIL
 NIL
 1
+
+MONITOR
+24
+336
+187
+381
+Total Messages
+total-messages
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
