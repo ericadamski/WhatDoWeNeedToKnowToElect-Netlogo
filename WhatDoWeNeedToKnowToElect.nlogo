@@ -613,7 +613,7 @@ population-size
 population-size
 2
 100
-2
+10
 1
 1
 NIL
@@ -780,6 +780,24 @@ total-messages
 17
 1
 11
+
+PLOT
+772
+275
+1066
+507
+Messages per tick
+time
+messages
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot total-messages"
 
 @#$#@#$#@
 ## WHAT IS IT?
