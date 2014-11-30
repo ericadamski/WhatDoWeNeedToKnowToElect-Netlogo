@@ -17,9 +17,9 @@
 
 * - [x] Title ( Real-Time Analysis of the Leader Election Algorithm Provided in 'What Do We Need To Know To Elect In a Network With Unknown Participants' )
 * - [x] Abstract
-* - [ ] Defenition of Distributed Algorithms
+* - [x] Defenition of Distributed Algorithms
 * - [x] Intro : Our project idea in relation to the research paper
-* - [ ] Model ( see model in research paper )
+* - [x] Model ( see model in research paper )
   * Test Properties :
   ```
     Run this test for the regular algorithm and the modified one for comparison.
@@ -43,11 +43,11 @@
     * Knowledge -> same
     * Remains Universal -> give explanation
   ( For all same above restate in your own words the general idea )
-* - [ ] Body
+* - [x] Body
   * There seems to be an overhead of time we need to consider to build the network using a type of flood-echo algorithm ( Talk to me about this if you need help )
   * You may need to program in some more funcitons to help plot the msg complexity and such.
   * Analyize multiple runs of the leader election algorithm, plot number of nodes, number of ticks, number of messages come up with time analysis ( big O notation ) and message complexity ( big O notation ) we need to discuss the theorectical formulas before hand. Then we can compare our results and discuss them. Explain some faults in our process and maybe some faults in the algorithm.
-* - [ ] Conclusion
+* - [x] Conclusion
   * Link back to main paper abstract, compare or prove why our test did or did not work
   * how this relates to real world
 
